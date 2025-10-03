@@ -18,16 +18,16 @@ graph TB
     H -->|Update| C
     J -->|Pull Image| C
     
-    style A fill:#e1f5ff
-    style B fill:#fff3e0
-    style C fill:#f3e5f5
-    style D fill:#e8f5e9
-    style E fill:#fce4ec
-    style F fill:#e0f2f1
-    style G fill:#f0f4c3
-    style H fill:#ffecb3
-    style I fill:#e1bee7
-    style J fill:#c8e6c9
+    style A fill:#4a90e2,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#f39c12,stroke:#fff,stroke-width:2px,color:#000
+    style C fill:#9b59b6,stroke:#fff,stroke-width:2px,color:#fff
+    style D fill:#27ae60,stroke:#fff,stroke-width:2px,color:#fff
+    style E fill:#e74c3c,stroke:#fff,stroke-width:2px,color:#fff
+    style F fill:#16a085,stroke:#fff,stroke-width:2px,color:#fff
+    style G fill:#f1c40f,stroke:#000,stroke-width:2px,color:#000
+    style H fill:#e67e22,stroke:#fff,stroke-width:2px,color:#fff
+    style I fill:#8e44ad,stroke:#fff,stroke-width:2px,color:#fff
+    style J fill:#2ecc71,stroke:#fff,stroke-width:2px,color:#000
 ```
 
 ## 🏗️ 作成されるAWSリソース
@@ -505,8 +505,9 @@ graph LR
     A[Browser] --> B[CloudFront + WAF]
     B -->|IP制限| C[Lambda Function]
     
-    style B fill:#ffeb3b
-    style C fill:#f3e5f5
+    style A fill:#4a90e2,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#f39c12,stroke:#fff,stroke-width:2px,color:#000
+    style C fill:#9b59b6,stroke:#fff,stroke-width:2px,color:#fff
 ```
 
 詳細: [IP-RESTRICTION-GUIDE.md](./doc/IP-RESTRICTION-GUIDE.md)
@@ -521,8 +522,9 @@ graph TB
     B --> C[Lambda Function]
     A -.->|❌ ブロック| C
     
-    style B fill:#4caf50
-    style C fill:#f3e5f5
+    style A fill:#4a90e2,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#27ae60,stroke:#fff,stroke-width:2px,color:#fff
+    style C fill:#9b59b6,stroke:#fff,stroke-width:2px,color:#fff
 ```
 
 詳細: [CLOUDFRONT-ONLY-ACCESS.md](./doc/CLOUDFRONT-ONLY-ACCESS.md)
@@ -540,8 +542,8 @@ graph TB
         note2["• ポート8080でリッスン<br/>• 通常のWebアプリとして動作"]
     end
     
-    style A fill:#e8f5e9
-    style B fill:#fce4ec
+    style A fill:#27ae60,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#e74c3c,stroke:#fff,stroke-width:2px,color:#fff
 ```
 
 **メリット**:
