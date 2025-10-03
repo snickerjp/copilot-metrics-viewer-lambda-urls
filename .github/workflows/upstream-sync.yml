@@ -1,0 +1,110 @@
+---
+name: Sync with Upstream and Deploy
+
+on:
+  schedule:
+    # Runs at 09:15 JST on the 15th of every month
+    - cron: '15 0 15 * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      latest-tag: ${{ steps.check.outputs.latest-tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream updates
+        id: check
+        run: |
+          # Get the current upstream commit hash (from file)
+          CURRENT_COMMIT=$(cat .upstream-sha 2>/dev/null || echo "none")
+          echo "Current upstream commit: $CURRENT_COMMIT"
+
+          # Fetch the latest commit hash from the GitHub API
+          LATEST_COMMIT=$(curl -s \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/github-copilot-resources/copilot-metrics-viewer/commits/main" \
+            | jq -r '.sha[0:7]' 2>/dev/null || echo "none")
+          echo "Latest upstream commit: $LATEST_COMMIT"
+
+          # Check if an update is available
+          if [ "$CURRENT_COMMIT" != "$LATEST_COMMIT" ] && \
+             [ "$LATEST_COMMIT" != "none" ]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "latest-tag=latest" >> $GITHUB_OUTPUT
+            echo "Update detected: $CURRENT_COMMIT -> $LATEST_COMMIT"
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "No update needed"
+          fi
+
+  deploy:
+    needs: check-upstream
+    if: needs.check-upstream.outputs.should-deploy == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update upstream commit hash
+        run: |
+          # Fetch upstream commit hash and save to file
+          LATEST_COMMIT=$(curl -s \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/github-copilot-resources/copilot-metrics-viewer/commits/main" \
+            | jq -r '.sha[0:7]' 2>/dev/null || echo "none")
+          echo "$LATEST_COMMIT" > .upstream-sha
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: >-
+            arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/copilot-metrics-viewer-github-actions
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: copilot-metrics-viewer
+          IMAGE_TAG: ${{ needs.check-upstream.outputs.latest-tag }}
+        run: |
+          docker build -f docker/Dockerfile \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Update Lambda function
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: copilot-metrics-viewer
+          IMAGE_TAG: ${{ needs.check-upstream.outputs.latest-tag }}
+        run: |
+          aws lambda update-function-code \
+            --function-name copilot-metrics-viewer \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Commit updated files
+        env:
+          LATEST_TAG: ${{ needs.check-upstream.outputs.latest-tag }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .upstream-sha
+          git commit -m "Update to upstream version $LATEST_TAG" || exit 0
+          git push
