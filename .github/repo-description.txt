@@ -1,0 +1,1 @@
+Deploy GitHub Copilot Metrics Viewer on AWS Lambda with Function URLs - Cost-effective ($1-2/month), serverless, auto-scaling solution with Terraform
